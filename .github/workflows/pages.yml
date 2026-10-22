@@ -1,0 +1,53 @@
+name: Publish landing page
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'skills/agent-pr-monitor/**'
+      - 'scripts/build-site.mjs'
+      - 'src/distribution/site-release.mjs'
+      - '.github/workflows/pages.yml'
+      - 'package.json'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # An empty repository's first push precedes its first uploaded release.
+    # Publishing that release (or a manual run) deploys the initial page.
+    if: github.event_name != 'push' || github.event.before != '0000000000000000000000000000000000000000'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Prepare the site and verify its release downloads
+        run: node scripts/build-site.mjs --verify-remote
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: .local/site-dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy landing page
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#171c17">
+    <meta name="description" content="A shared plan and a clear scope for every agent. Download Agent PR Monitor for Apple Silicon Macs and the companion agent skill.">
+    <title>Agent PR Monitor — A shared plan. Room to work.</title>
+    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./main.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="site-shell">
+      <header class="site-header">
+        <a class="brand" href="#" aria-label="Agent PR Monitor home">
+          <svg class="brand-mark" width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true"><path d="M8 6v18M22 6v8a6 6 0 0 1-6 6H8" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="6" r="3" fill="var(--background)" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="24" r="3" fill="var(--background)" stroke="currentColor" stroke-width="1.5"/><circle cx="22" cy="6" r="3" fill="var(--background)" stroke="currentColor" stroke-width="1.5"/></svg>
+          <span>Agent <span class="brand-muted">PR Monitor</span></span>
+        </a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a href="#workflow">How it works</a>
+          <a href="#agent-skill">Agent skill</a>
+          <a class="nav-download" href="#download">Get the app <span aria-hidden="true">↗</span></a>
+        </nav>
+      </header>
+
+      <main id="main" tabindex="-1">
+        <section class="hero" aria-labelledby="hero-title">
+          <div class="hero-eyebrow eyebrow"><span class="status-dot" aria-hidden="true"></span> A little coordination. A lot more clarity.</div>
+          <div class="hero-grid">
+            <h1 id="hero-title">A shared plan.<br><em>Room to work.</em></h1>
+            <div class="hero-copy">
+              <p class="hero-description">Keep your coding agents on the same page, before their changes overlap.</p>
+              <p class="body-copy">Agent PR Monitor gives your sessions a shared plan, reserved files and functions, and a clear view of work moving toward merge.</p>
+              <div class="hero-actions">
+                <a class="button button-primary" href="{{DMG_URL}}" download>
+                  <svg width="17" height="19" viewBox="0 0 17 19" fill="none" aria-hidden="true"><path d="M8.5 1v11m-4-4 4 4 4-4M1 13v4h15v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Download for macOS
+                </a>
+                <a class="button button-secondary" href="./downloads/agent-pr-monitor-skill.zip" download>Get the agent skill <span aria-hidden="true">↗</span></a>
+              </div>
+              <p class="download-meta mono">v{{VERSION}} <span>·</span> Apple Silicon <span>·</span> {{DMG_SIZE}}</p>
+              <a class="build-note" href="#download"><span class="small-dot" aria-hidden="true"></span>{{BUILD_LABEL}} <span aria-hidden="true">—</span> read build details</a>
+            </div>
+          </div>
+
+          <figure class="product-figure">
+            <div class="figure-topline mono"><span><span class="small-dot" aria-hidden="true"></span> YOUR WORKSPACE, AT A GLANCE</span><span>PLAN / RESERVE / BUILD</span></div>
+            <div class="product-image-wrap"><img src="./assets/app-overview.jpg" alt="Agent PR Monitor workspace overview, showing the shared plan, registered agent tasks, and reserved scopes in a demonstration workspace." width="2840" height="1782" fetchpriority="high"></div>
+            <figcaption><span>A shared view of intent, scope, and progress. Demo workspace.</span><span class="mono">Agent PR Monitor for macOS <span aria-hidden="true">↗</span></span></figcaption>
+          </figure>
+          <div class="compatibility-line"><span class="eyebrow">BUILT AROUND THE AGENTS YOU RUN</span><p>Codex <span aria-hidden="true">/</span> Claude Code <span aria-hidden="true">/</span> Cursor <span aria-hidden="true">/</span> OpenCode</p><a href="#integration-faq">Development adapters · see coverage <span aria-hidden="true">↗</span></a></div>
+        </section>
+
+        <section class="workflow section" id="workflow" aria-labelledby="workflow-title">
+          <div class="section-intro">
+            <span class="eyebrow section-kicker"><span class="section-index">01</span> THE WORKFLOW</span>
+            <h2 id="workflow-title">Parallel work.<br>A common understanding.</h2>
+            <p class="body-copy">Each Mac keeps its own clone and branch. The workspace keeps the plan and reservations in view.</p>
+          </div>
+          <ol class="workflow-steps">
+            <li><span class="step-number mono">01 /</span><div><h3>Bring the plan together.</h3><p>Create or join a LAN workspace, select your local clone, and write the shared plan. Every session starts from the same intent.</p></div><svg width="25" height="25" viewBox="0 0 25 25" fill="none" aria-hidden="true"><path d="M5 5h15v15H5zM9 10h7M9 14h7" stroke="currentColor" stroke-width="1.2"/></svg></li>
+            <li><span class="step-number mono">02 /</span><div><h3>Give each agent a clear scope.</h3><p>Prepare each session in Agents. Have it read the plan, inspect current work, and reserve the files or functions it intends to change.</p></div><svg width="25" height="25" viewBox="0 0 25 25" fill="none" aria-hidden="true"><path d="M4 9V4h5m7 0h5v5m0 7v5h-5m-7 0H4v-5M9 9h7v7H9z" stroke="currentColor" stroke-width="1.2"/></svg></li>
+            <li><span class="step-number mono">03 /</span><div><h3>Follow the work through.</h3><p>See overlaps before proceeding, revise scope when plans change, and link existing pull requests. Reservations remain until the release conditions are met.</p></div><svg width="25" height="25" viewBox="0 0 25 25" fill="none" aria-hidden="true"><path d="M6 5v15m13-15v6a6 6 0 0 1-6 6H6" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="5" r="2" fill="var(--background)" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="20" r="2" fill="var(--background)" stroke="currentColor" stroke-width="1.2"/><circle cx="19" cy="5" r="2" fill="var(--background)" stroke="currentColor" stroke-width="1.2"/></svg></li>
+          </ol>
+        </section>
+
+        <section class="skill-section" id="agent-skill" aria-labelledby="skill-title">
+          <div class="skill-main">
+            <span class="eyebrow"><span class="section-index">02</span> THE COMPANION SKILL</span>
+            <h2 id="skill-title">Give your agent<br>the field guide.</h2>
+            <p>The app coordinates the work. The skill teaches your agent how to take part: read the plan, propose a scope, handle conflicts, and finish responsibly.</p>
+            <div class="skill-downloads"><a class="button button-dark" href="./downloads/agent-pr-monitor-skill.zip" download>Download agent skill <span aria-hidden="true">↓</span></a><a class="inline-link" href="./downloads/SKILL.md" download>Get SKILL.md <span aria-hidden="true">↗</span></a></div>
+            <div class="skill-file mono"><svg width="15" height="17" viewBox="0 0 15 17" fill="none" aria-hidden="true"><path d="M3 1h6l4 4v11H2V1h1Zm6 0v5h4M5 10h5M5 13h4" stroke="currentColor" stroke-width="1.1"/></svg> agent-pr-monitor / SKILL.md</div>
+          </div>
+          <div class="skill-guide">
+            <ol class="skill-steps">
+              <li><span class="mono">1.</span><p><strong>Install the guide.</strong> Unzip it into your agent client’s skills directory, keeping the <code>agent-pr-monitor</code> folder intact. For other clients, supply the Markdown as project instructions.</p></li>
+              <li><span class="mono">2.</span><p><strong>Connect the session.</strong> Open Agents in the app and review the generated MCP and hook setup for that session. The skill works alongside this setup.</p></li>
+              <li><span class="mono">3.</span><p><strong>Start with the plan.</strong> Ask your agent to use the skill before it begins editing.</p></li>
+            </ol>
+            <div class="prompt-box">
+              <div class="prompt-heading"><span class="mono">A STARTING PROMPT</span><button class="copy-button" type="button" data-copy-prompt hidden>Copy <span aria-hidden="true">⧉</span></button></div>
+              <p id="agent-prompt">Use the Agent PR Monitor skill. Read the shared plan, check current tasks and the repository, then register the exact files or functions you intend to change before editing.</p>
+              <span class="copy-status sr-only" role="status" aria-live="polite"></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="download-section section" id="download" aria-labelledby="download-title">
+          <div class="section-intro">
+            <span class="eyebrow section-kicker"><span class="section-index">03</span> ON YOUR MAC</span>
+            <h2 id="download-title">Make room<br>for better teamwork.</h2>
+            <p class="body-copy">Download the app, bring your agents, and start with a shared plan.</p>
+          </div>
+          <div class="download-card">
+            <div class="download-card-title"><svg class="brand-mark" width="35" height="35" viewBox="0 0 30 30" fill="none" aria-hidden="true"><path d="M8 6v18M22 6v8a6 6 0 0 1-6 6H8" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="6" r="3" fill="var(--surface)" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="24" r="3" fill="var(--surface)" stroke="currentColor" stroke-width="1.5"/><circle cx="22" cy="6" r="3" fill="var(--surface)" stroke="currentColor" stroke-width="1.5"/></svg><div><h3>Agent PR Monitor</h3><p class="mono">macOS · Apple Silicon · v{{VERSION}}</p></div></div>
+            <a class="button button-primary download-wide" href="{{DMG_URL}}" download>Download .dmg <span aria-hidden="true">↓</span></a>
+            <div class="download-card-meta mono"><span>{{DMG_SIZE}}</span><span>{{BUILD_LABEL}}</span></div>
+            <p class="build-detail">Ad-hoc signed development build. Developer ID signing, notarization, and the full device/client qualification are still in progress.</p>
+            <div class="release-links"><a href="{{RELEASE_URL}}">Release assets <span aria-hidden="true">↗</span></a><a href="{{REPORT_URL}}">Inspection report <span aria-hidden="true">↗</span></a></div>
+            <details class="checksum-details"><summary>Verify the download <span aria-hidden="true">+</span></summary><div><p>Compare the downloaded DMG’s SHA-256 with the value below.</p><code>{{SHA256}}</code><a href="{{CHECKSUM_URL}}" download>Download checksum file <span aria-hidden="true">↓</span></a></div></details>
+          </div>
+        </section>
+
+        <section class="faq section" aria-labelledby="faq-title">
+          <div class="section-intro"><span class="eyebrow section-kicker">BEFORE YOU BEGIN</span><h2 id="faq-title">A few useful details.</h2></div>
+          <div class="faq-list">
+            <details><summary>Which Macs can run this build?<span aria-hidden="true">+</span></summary><div><p>This download targets Apple Silicon and declares macOS 15 or later. The packaged build has been run on the development Mac with macOS 27; macOS 15/26 and physical multi-Mac qualification remain open. An Intel build is not included.</p></div></details>
+            <details><summary>How do I install it?<span aria-hidden="true">+</span></summary><div><p>Open the DMG and drag Agent PR Monitor into Applications. This build is ad-hoc signed and is not notarized, so macOS may block its first launch. Review the release and inspection details before deciding whether to allow this development app through macOS Privacy &amp; Security.</p></div></details>
+            <details id="integration-faq"><summary>Which agent integrations are available?<span aria-hidden="true">+</span></summary><div><p>The app includes development adapters for Codex, Claude Code, Cursor IDE Agent, and OpenCode. Agents provides reviewable setup for each session. Actual-client hook enforcement and failure behavior still need qualification; an adapter is not a guarantee that every client surface is covered.</p><p>The gates cover specific native tool paths. Arbitrary shell and delegation are refused, Codex patches require whole-file scope, and Cursor CLI and Tab are not qualified. The skill explains these boundaries.</p></div></details>
+            <details><summary>Does the app run agents or merge pull requests?<span aria-hidden="true">+</span></summary><div><p>You run the agent sessions. Agent PR Monitor coordinates their proposed work and observes local Git and GitHub state. It does not launch model sessions, commit, push, open pull requests, or merge them.</p></div></details>
+            <details><summary>Can agents keep working when disconnected?<span aria-hidden="true">+</span></summary><div><p>An already accepted task can continue within its reserved scope when the session has a valid signed offline receipt. New tasks and scope changes require current coordination authority. An unreachable Mac learns about remote stops when it reconnects.</p></div></details>
+            <details><summary>Does the skill replace the app’s integration setup?<span aria-hidden="true">+</span></summary><div><p>The skill provides workflow instructions. Each actual agent session still needs the app’s generated MCP and hook setup, reviewed and trusted in its client. Keep private endpoint files, session files, and bearer credentials out of prompts and shared repositories.</p></div></details>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer"><a class="brand footer-brand" href="#">Agent <span class="brand-muted">PR Monitor</span></a><p>A shared plan. Room to work.</p><a href="{{RELEASE_URL}}">v{{VERSION}} <span aria-hidden="true">↗</span></a></footer>
+    </div>
+  </body>
+</html>

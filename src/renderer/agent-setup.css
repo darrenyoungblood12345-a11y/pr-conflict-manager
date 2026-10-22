@@ -1,0 +1,39 @@
+.agent-setup { display: flex; flex-direction: column; gap: 22px; }
+.agent-setup-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 1px; }
+.agent-setup-heading h2 { font-family: Georgia, serif; font-size: 25px; font-weight: 400; margin: 10px 0; color: #dde4d4; letter-spacing: -.5px; }
+.agent-setup-heading p { margin: 0; font-size: 10px; color: #94a386; line-height: 1.8; }
+.agent-installations { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.agent-installation { background: #20261d; border: 1px solid #36432e; border-radius: 6px; text-align: left; padding: 17px 15px; min-width: 0; }
+.agent-installation:hover { background: #293424; border-color: #627952; }
+.agent-installation.chosen { border-color: #a7c28f; background: #2b3824; }
+.agent-installation strong { display: block; font-size: 12px; color: #d2e0c5; font-weight: 500; }
+.agent-installation span { display: block; font-family: Menlo, monospace; font-size: 9px; color: #98b283; margin-top: 11px; overflow-wrap: anywhere; line-height: 1.6; }
+.agent-installation small { display: block; color: #c2b591; font-size: 8px; margin-top: 8px; }
+.agent-setup-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 20px; align-items: start; }
+.agent-session-form { padding: 21px; }
+.agent-session-form label { display: block; font-size: 10px; color: #b7cba9; margin-bottom: 16px; line-height: 1.8; }
+.agent-session-form label > input { display: block; margin-top: 6px; }
+.agent-session-form label > code { color: #88a771; margin-left: 5px; font-size: 9px; }
+.agent-session-form .button { margin-top: 18px; }
+.agent-session-form input[readonly] { color: #879b77; font-size: 10px; border-color: #35482b; }
+.agent-qualification { padding: 20px 21px; }
+.agent-qualification > p:first-child { color: #c6d7b8; font-size: 11px; line-height: 1.8; margin: 0 0 16px; }
+.agent-qualification .field-hint { border-top: 1px solid #34462b; padding-top: 12px; font-size: 9px; }
+.agent-snippet-body { padding: 18px 23px 24px; }
+.agent-snippet-body > .field-hint:first-child { margin-top: 0; }
+.agent-private-paths { margin: 20px 0 25px; border-top: 1px solid #35492b; border-bottom: 1px solid #35492b; padding: 12px 0; }
+.agent-private-paths > div { display: flex; gap: 18px; padding: 7px 0; }
+.agent-private-paths dt { width: 130px; flex-shrink: 0; color: #8ba675; font-size: 9px; }
+.agent-private-paths dd { min-width: 0; margin: 0; font-size: 9px; color: #b1c99d; }
+.agent-private-paths code { font-size: 9px; overflow-wrap: anywhere; }
+.agent-snippet { margin: 18px 0 22px; }
+.agent-snippet > div { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 10px; }
+.agent-snippet > div > code, .agent-snippet > div > strong { color: #bbd0a8; font-size: 10px; font-weight: 400; }
+.agent-snippet > textarea { font-family: Menlo, monospace; color: #b4cc9f; font-size: 10px; line-height: 1.8; resize: vertical; white-space: pre; overflow: auto; }
+.agent-notices { border-top: 1px solid #35492b; padding-top: 7px; }
+.agent-notices .field-hint { color: #aaa889; font-size: 9px; }
+@media (max-width: 1150px) {
+  .agent-installations { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .agent-setup-grid { grid-template-columns: minmax(0, 1fr); }
+  .agent-private-paths > div { flex-direction: column; gap: 6px; }
+}

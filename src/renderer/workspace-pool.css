@@ -1,0 +1,15 @@
+.pool-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+.pool-body { display: flex; flex-direction: column; gap: 20px; padding: 24px; }
+.pool-body h3 { margin: 0; font: 26px Georgia, serif; }
+.pool-body label { display: flex; flex-direction: column; gap: 9px; font-size: 12px; color: #aeb6a4; }
+.pool-body .checkbox-label { flex-direction: row; align-items: start; gap: 10px; line-height: 1.5; }
+.checkbox-label input { width: auto; margin-top: 3px; flex-shrink: 0; }
+.fingerprint { overflow-wrap: anywhere; white-space: pre-wrap; font-size: 12px; line-height: 1.8; color: #cad5b9; }
+.invitation-text { font-size: 10px; }
+.invitation-review { display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px solid #48533d; background: #252d22; border-radius: 8px; }
+.invitation-review strong { font-size: 13px; color: #e0e4d6; }
+.pool-members > div { display: flex; justify-content: space-between; gap: 10px; padding: 12px 0; border-bottom: 1px solid #343b2e; font-size: 12px; }
+.saved-workspaces { grid-column: 1 / -1; }
+.saved-workspace { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid #343b2e; }
+.saved-workspace > div { display: flex; flex-direction: column; gap: 8px; }
+.saved-workspace code { font-size: 11px; color: #9da694; }

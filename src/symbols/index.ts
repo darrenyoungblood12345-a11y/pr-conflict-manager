@@ -1,0 +1,6 @@
+export { analyzeFile, MAX_ANALYSIS_BYTES } from './analyze.js'
+export { languageForPath, LANGUAGE_CONFIGURATIONS } from './languages.js'
+export { symbolAssetPaths } from './runtime.js'
+export { validateDeclaredScopes } from './validate.js'
+export { validateSymbolEdit } from './edit.js'
+export type { CodeSymbol, SymbolAnalysis, SymbolOptions, ScopeFallback, ScopeValidationResult, SymbolEditDecision } from './types.js'

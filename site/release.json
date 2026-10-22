@@ -1,0 +1,10 @@
+{
+  "version": "0.1.0",
+  "buildKind": "development",
+  "architecture": "arm64",
+  "repository": "darrenyoungblood12345-a11y/pr-conflict-manager",
+  "tag": "v0.1.0-development",
+  "asset": "Agent-PR-Monitor-0.1.0-mac-arm64-development.dmg",
+  "sha256": "18b1194f46d62b48a351ce0bab4e29152ff925b569179f8f175d19f9de2cfdfd",
+  "bytes": 142312823
+}

@@ -1,0 +1,55 @@
+{
+  "name": "agent-pr-monitor",
+  "productName": "Agent PR Monitor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A local-first coordination workspace for coding agents",
+  "main": "dist/electron/main.cjs",
+  "scripts": {
+    "setup:go": "node scripts/setup-go.mjs",
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "build:native": "node scripts/build-native.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:native": "node scripts/test-native.mjs",
+    "test:integration": "node --test tests/native-protocol.test.mjs",
+    "test:lan-integration": "node --test tests/lan-receipt.test.mjs",
+    "check": "npm run typecheck && npm run build && npm test && npm run test:native && npm run test:integration && npm run test:lan-integration",
+    "start": "electron .",
+    "package:mac": "npm run build && node scripts/package-mac.mjs",
+    "inspect:mac": "node scripts/inspect-mac.mjs",
+    "archive:mac": "node scripts/archive-mac.mjs",
+    "dmg:mac": "node scripts/dmg-mac.mjs",
+    "dist:mac": "npm run package:mac && npm run archive:mac && npm run dmg:mac",
+    "site:build": "node scripts/build-site.mjs",
+    "site:build:local": "node scripts/build-site.mjs --local",
+    "site:verify-release": "node scripts/build-site.mjs --verify-remote",
+    "mcp": "node dist/integrations/cli.js mcp"
+  },
+  "dependencies": {
+    "@cursorless/tree-sitter-wasms": "0.12.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@unicode/unicode-15.0.0": "2.0.8",
+    "bonjour-service": "1.4.4",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "web-tree-sitter": "0.27.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "electron": "44.9.2",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}
