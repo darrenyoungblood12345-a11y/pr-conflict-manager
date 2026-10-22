@@ -165,7 +165,7 @@ Installed three verified matching files under `/Users/darren/.codex/skills/plan-
 - Manual physical-Mac/OS/client steps and evidence templates are in `docs/acceptance-checklist.md`; development packaging and public-release prerequisites are in `docs/distribution.md`.
 - Final October 22 `npm run check` passed: typecheck/build, 321 JavaScript/TypeScript tests across 34 files, the complete Go race suite including ten peers (80.5 seconds), seven native/MCP protocol tests, and five real LAN receipt tests. The development ZIP checksum is `5695a3a4697c66a9890d472c9c5f490fa075c99cdb9850e66bcfe5d495cbbb8d`.
 
-## GitHub Pages landing page and downloadable skill — implementation
+## GitHub Pages landing page and downloadable skill — complete
 
 The user requested a plan and explicit approval before implementation of this
 new scope. The detailed proposal is in [landing-page-plan.md](landing-page-plan.md).
@@ -181,9 +181,9 @@ new scope. The detailed proposal is in [landing-page-plan.md](landing-page-plan.
 - [x] Create and validate the canonical agent skill and its downloadable files.
 - [x] Add verified DMG packaging, checksums, and distribution documentation.
 - [x] Configure GitHub Pages deployment and versioned release download links.
-- [ ] Run the planned checks, publish within the approved scope, and verify both
+- [x] Run the planned checks, publish within the approved scope, and verify both
   downloads from the live page.
-- [ ] Record final implementation evidence and remaining limitations here.
+- [x] Record final implementation evidence and remaining limitations here.
 
 Planning review: the current artifact is a development ZIP, not a DMG; this
 folder is not a Git repository and has no remote. The proposal preserves the
@@ -221,3 +221,34 @@ Implementation review (before initial publication):
   remote DMG size, checksum, and matching inspection evidence before publishing.
   The installer lives in GitHub Releases; only the small page/skill output is
   uploaded as the Pages artifact.
+
+Publication and final verification:
+
+- Initial commit `9b458a8751508f770e01e02ec7643df2b566ae9a` was pushed to `main`
+  using the account's GitHub noreply author address. The public prerelease is
+  <https://github.com/darrenyoungblood12345-a11y/pr-conflict-manager/releases/tag/v0.1.0-development>.
+  All eight assets uploaded successfully; GitHub's independently reported DMG
+  digest matches the verified local SHA-256 above. The alternate ZIP digest
+  matches its previously verified development artifact as well.
+- A copy from the exact DMG passed isolated bundled-runtime checks after the
+  image was detached: strict signature and all fifteen native binaries, bundled
+  Electron/Node startup, native coordinator authority and 401 auth refusal,
+  actual stdio MCP discovery of all twelve tools, and all fourteen packaged
+  parsers with expected symbols. A function-qualified task was accepted and
+  bound to the correct private session/revision. No UI or commercial client was
+  launched for that packaged-runtime smoke; it is distinct from the actual
+  renderer screenshot and from outstanding client/physical-Mac qualification.
+- The initial release-triggered Pages build passed, but its deployment was
+  rejected by the default main-only environment rule. The environment retains
+  `main` and now permits `v*-development` tags. The corrected deployment
+  succeeded: <https://github.com/darrenyoungblood12345-a11y/pr-conflict-manager/actions/runs/39831521108>.
+- The live page returns HTTP 200 at
+  <https://darrenyoungblood12345-a11y.github.io/pr-conflict-manager/>. Its CSS,
+  JavaScript, screenshot, icon, release links, raw skill, and ZIP were checked
+  from that project-site URL. Both skill formats byte-match the canonical skill
+  (`74b8321316d527ccfa84e8b6d2013ea43a0df80576dca5201a8c3c76f2473820`).
+  Public DMG size/checksum/inspection-report verification passed. Keyboard skip
+  navigation focuses `MAIN`; the rendered page has been opened for the user.
+- The final focused distribution run passed 33 tests. No app functionality or
+  signing/OS/client support claims were expanded. Developer ID/notarization and
+  the acceptance matrix remain the development release's stated limitations.

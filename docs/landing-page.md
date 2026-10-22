@@ -24,6 +24,11 @@ Electron app's dependencies. Before deployment it checks the remote DMG size,
 the checksum file, and the matching mounted-app inspection report. Missing or
 inconsistent assets fail the build before a page is published.
 
+Pages uses the `github-pages` environment with its `main` branch rule and a
+`v*-development` tag rule. Release-triggered jobs run from their tag; the default
+main-only environment policy would reject those deployments. Keep the tag rule
+aligned with any future release naming changes.
+
 To prepare production output locally:
 
 ```sh
