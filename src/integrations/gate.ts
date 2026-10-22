@@ -12,7 +12,6 @@ import { receiptInvalidatedBy, verifyOfflineReceipt } from './offline-receipt.js
 import { isActiveTask, sameReservation } from './task-identity.js'
 import { validateRepositoryBinding } from './repository-guard.js'
 import { checkedSourcePath, isWithin } from './source-path.js'
-import { isNativeReadTool, validateNativeRead } from './read-only.js'
 
 export interface GateOptions extends SymbolOptions {
   onSnapshotObserved?: (snapshot: Snapshot) => Promise<unknown>
@@ -33,6 +32,9 @@ export interface ToolInvocation {
   serverName?: string
   serverSource?: string
 }
+
+const FILE_EDIT_TOOLS = ['Edit', 'Write', 'MultiEdit', 'Delete', 'edit', 'write', 'multiedit']
+const isEditTool = (name: string) => name === 'apply_patch' || FILE_EDIT_TOOLS.includes(name)
 
 export const isCoordinationTool = (invocation: ToolInvocation): boolean => {
   const { name, serverName, serverSource } = invocation
@@ -62,8 +64,7 @@ const patchPaths = (command: unknown): string[] => {
 
 const editPaths = (invocation: ToolInvocation): string[] => {
   if (invocation.name === 'apply_patch') return patchPaths(invocation.input.command)
-  const knownFileTools = ['Edit', 'Write', 'MultiEdit', 'Delete', 'edit', 'write', 'multiedit']
-  if (!knownFileTools.includes(invocation.name)) return []
+  if (!FILE_EDIT_TOOLS.includes(invocation.name)) return []
   const supplied = ['file_path', 'filePath', 'path'].filter(key => key in invocation.input).map(key => invocation.input[key])
   if (supplied.length === 0 || supplied.some(value => typeof value !== 'string' || value.length === 0)) return []
   // Do not authorize one path while a client-specific alias points elsewhere.
@@ -78,13 +79,10 @@ export const evaluateGate = async (
   options: GateOptions = {},
 ): Promise<GateDecision> => {
   if (isCoordinationTool(invocation)) return allow('Workspace coordination remains available')
+  // Only native file edits are coordinated. Shell, reads, skills, and other tools
+  // follow the client's own permission policy; reservations stay cooperative.
+  if (!isEditTool(invocation.name)) return allow('Only file edits are coordinated; this tool follows the client permission policy')
   if (invocation.sessionId !== context.sessionId) return deny('This agent session is not bound to the task context.' + followup)
-  if (isNativeReadTool(invocation.name)) {
-    try {
-      await validateNativeRead(context, invocation)
-      return allow('Bounded native source inspection remains available before work and while blocked')
-    } catch { return deny('Native read/search input is outside the qualified source inspection policy; use a specific safe source path.') }
-  }
   if (!context.taskId || context.revision === undefined) return deny('Read the shared plan and register a task before starting work.' + followup)
   if ((context.offlineRevokedThrough?.[context.taskId] ?? -1) >= context.revision) return deny('A later local stop or revision invalidated this task acceptance.' + followup)
   try {
@@ -114,7 +112,7 @@ export const evaluateGate = async (
     }
     const files = editPaths(invocation)
     if (files.length === 0 || !isModeledEditPayload(invocation)) {
-      return deny('This tool has no proven edit scope. Arbitrary shell, delegation, and unknown tool payloads remain unqualified.' + followup)
+      return deny('This edit payload has no proven target scope. Use a supported Edit, Write, or MultiEdit payload on reserved paths.' + followup)
     }
     const root = await realpath(context.repositoryRoot)
     const cwd = await realpath(invocation.cwd)

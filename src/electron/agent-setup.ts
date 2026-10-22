@@ -26,6 +26,11 @@ const isInside = (root: string, target: string) => {
   const relative = path.relative(root, target)
   return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))
 }
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** Claude Code reads hooks and MCP servers at startup, so the session starts (or resumes) after setup. */
+const claudeLaunchCommand = (root: string, sessionId: string, generated: boolean) => UUID.test(sessionId)
+  ? `cd ${shellQuote(root)} && claude ${generated ? '--session-id' : '--resume'} ${sessionId}`
+  : undefined
 const requireAbsolutePath = (value: string) => {
   if (!path.isAbsolute(value) || /[\r\n\0]/.test(value)) throw new Error('Agent setup requires absolute, single-line local paths.')
 }
@@ -143,8 +148,11 @@ export const createAgentSetupService = (options: AgentSetupOptions) => {
     const endpointFile = options.getEndpointFile()
     if (!repositoryRoot || !endpointFile) throw new Error('Choose a clone and start the coordination workspace before preparing setup.')
     if (typeof request !== 'object' || request === null || Array.isArray(request)) throw new Error('Review the selected clone and agent session before preparing setup.')
-    const { expectedRepositoryRoot, expectedEndpointFile, ...identity } = request as Record<string, unknown>
+    const { expectedRepositoryRoot, expectedEndpointFile, ...requested } = request as Record<string, unknown>
     if (expectedRepositoryRoot !== repositoryRoot || expectedEndpointFile !== endpointFile) throw new Error('The clone or workspace changed. Refresh setup before continuing.')
+    // Claude Code accepts a caller-chosen session ID, so a new session needs no ID lookup.
+    const generatedSession = requested.agent === 'claude-code' && (requested.sessionId === undefined || requested.sessionId === '')
+    const identity = generatedSession ? { ...requested, sessionId: randomUUID() } : requested
     const context = agentContextSchema.pick({ agent: true, ownerId: true, sessionId: true }).strict().safeParse(identity)
     if (!context.success) throw new Error('Use a supported agent and nonempty owner/session identifiers up to 128 characters (letters, numbers, _, ., :, -).')
     const paths = [options.userDataDirectory, options.cliPath, options.electronPath, repositoryRoot, endpointFile]
@@ -188,7 +196,11 @@ export const createAgentSetupService = (options: AgentSetupOptions) => {
       await unlink(contextFile)
       throw new Error('The clone or workspace changed. Review it before preparing agent setup again.')
     }
-    return { ...snippets, repositoryRoot: root, contextFile, endpointFile, launcherFile }
+    const launchCommand = context.data.agent === 'claude-code' ? claudeLaunchCommand(root, context.data.sessionId, generatedSession) : undefined
+    return {
+      ...snippets, repositoryRoot: root, contextFile, endpointFile, launcherFile, sessionId: context.data.sessionId,
+      ...(launchCommand ? { launchCommand } : {}),
+    }
   }
 
   return { inspect, prepare }

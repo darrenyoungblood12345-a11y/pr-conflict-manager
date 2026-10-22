@@ -30,12 +30,13 @@ describe('native client adapters', () => {
     expect(api.snapshot).not.toHaveBeenCalled()
   })
 
-  it('throws before an OpenCode tool runs and leaves exact coordination tools callable', async () => {
+  it('throws before an unproven OpenCode edit runs and leaves coordination and shell tools callable', async () => {
     const api = { snapshot: vi.fn(async () => sampleSnapshot()), command: vi.fn() }
     const context = { ...sampleContext('/tmp'), agent: 'opencode' as const }
     const hook = createOpenCodeGate(api, async () => context, '/tmp')['tool.execute.before']
-    await expect(hook({ tool: 'bash', sessionID: 'session-a' }, { args: { command: 'touch x' } })).rejects.toThrow('Agent PR Monitor:')
+    await expect(hook({ tool: 'edit', sessionID: 'session-a' }, { args: { filePath: 'x', content: 'y' } })).rejects.toThrow('Agent PR Monitor:')
     await expect(hook({ tool: 'agent_pr_monitor_read_plan', sessionID: 'session-a' }, { args: {} })).resolves.toBeUndefined()
+    await expect(hook({ tool: 'bash', sessionID: 'session-a' }, { args: { command: 'npm test' } })).resolves.toBeUndefined()
   })
 
   it('denies an OpenCode context load failure', async () => {

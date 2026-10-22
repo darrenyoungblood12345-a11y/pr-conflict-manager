@@ -69,6 +69,24 @@ describe('private per-session agent setup', () => {
     expect(JSON.stringify(await service.inspect())).not.toContain(secret)
   })
 
+  it('generates a Claude Code session ID and the command that starts that exact session', async () => {
+    const { service, request, root } = await fixture()
+    const prepared = await service.prepare({ ...request, agent: 'claude-code', sessionId: '' })
+    expect(prepared.sessionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+    expect(prepared.launchCommand).toBe(`cd '${root}' && claude --session-id ${prepared.sessionId}`)
+    expect(JSON.parse(await readFile(prepared.contextFile, 'utf8')).sessionId).toBe(prepared.sessionId)
+    const second = await service.prepare({ ...request, agent: 'claude-code', sessionId: '' })
+    expect(second.sessionId).not.toBe(prepared.sessionId)
+  })
+
+  it('resumes a supplied Claude Code session ID and gives no launch command for other agents', async () => {
+    const { service, request, root } = await fixture()
+    const existing = '0f8fad5b-d9cb-469f-a165-70867728950e'
+    expect((await service.prepare({ ...request, agent: 'claude-code', sessionId: existing })).launchCommand).toBe(`cd '${root}' && claude --resume ${existing}`)
+    expect((await service.prepare({ ...request, agent: 'claude-code', sessionId: 'not-a-uuid' })).launchCommand).toBeUndefined()
+    expect((await service.prepare(request)).launchCommand).toBeUndefined()
+  })
+
   it('passes literal executable paths and argument bytes through the launcher without shell injection', async () => {
     const { service, request, directory } = await fixture()
     const prepared = await service.prepare(request)

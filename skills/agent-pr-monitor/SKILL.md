@@ -13,7 +13,7 @@ Use the app's `agent_pr_monitor` MCP server to coordinate the selected local clo
 
 ## Connect through the app
 
-If the tools are missing, direct the user to create, join, or reopen the workspace in **Workspace pool**, select this Mac's clone in **Worktree**, and open **Agents**. Prepare a separate setup for the actual running session using its native session ID: Codex/Claude Code `session_id`, Cursor `conversation_id`, or OpenCode `sessionID`. The app does not capture or invent that ID.
+If the tools are missing, direct the user to create, join, or reopen the workspace in **Workspace pool**, select this Mac's clone in **Worktree**, and open **Agents**. Prepare a separate setup for each agent session. For Claude Code, leave the session ID blank: the app generates one and shows a `claude --session-id <uuid>` command that starts the session after the snippets are merged (the hook goes in `.claude/settings.local.json`). For other clients, use the running session's native ID: Codex `session_id`, Cursor `conversation_id`, or OpenCode `sessionID`.
 
 Use the MCP/hook snippets and instructions generated there. They must be reviewed and merged into existing project configuration, preserving other servers, rules, and hooks. Do not install software, replace configuration, or fabricate endpoint/session files as part of using this skill. Keep private endpoint credentials and session-context contents out of prompts, logs, repositories, and shared history; leave task bindings, receipts, and revocation fields under the bridge's control.
 
@@ -23,7 +23,7 @@ Use the client's actual exposed tool names; they may include a server prefix suc
 
 1. Call `read_plan` and `list_tasks`. Read the requirements, current plan revision, other tasks' intent and actual scopes, conflicts, and stop acknowledgements. Use the returned `identity.ownerId`, `identity.sessionId`, and `identity.agent` unchanged for your task.
 2. Call `repository_status` to inspect the selected clone's branch, HEAD, origin, and existing changes. Do not invent a branch or base commit, overwrite unrelated changes, or claim another repository's reservation. LAN workspaces bind immutably to one canonical GitHub.com repository; separate clones/branches of that repository are allowed.
-3. Inspect relevant files with `list_symbols({ path })` or the client's supported bounded native `Read`/`Glob`/`Grep`. Use explicit safe source paths or subtrees. These planning reads can remain available before registration and while blocked; arbitrary shell commands are not a read-only exemption.
+3. Inspect relevant files with `list_symbols({ path })` or the client's normal read, search, and shell tools. Only file edits are gated, so inspection, builds, and tests remain available before registration and while blocked.
 4. Describe the intended change, affected existing functions, additions/removals, shared interfaces, and verification needs. Declare every path the proposed edits will touch. Submit the complete proposal through `submit_task({ task })` using the current plan revision and the observed branch/base commit.
 5. Inspect the resulting task, canonical scopes, and `scopeWarnings`. New editing requires a fresh accepted response with `hasAuthority: true`, `editingAllowed: true`, matching owner/session/agent and proposal, a current revision, `status: 'active'`, `stopAcknowledged: false`, and no conflicts. The bridge binds that acceptance into the private context; the native gate checks current permission again before each covered action.
 
@@ -56,7 +56,7 @@ Use a unique identifier of at most 128 characters with letters, numbers, `_`, `.
 - Codex `apply_patch` requires whole-file scope for every add/update/delete/rename path, including both rename endpoints. A symbol claim does not authorize a Codex patch.
 - Coordinate additional paths or broader scope **before** editing them. Stop all admitted/background writes, acknowledge the stop, reread the plan and task revision, and use `revise_task` with a complete replacement proposal. Retain task/owner/session/agent identity. A revision clears the previous PR link and merge evidence; inspect the fresh acceptance before resuming.
 
-Arbitrary shell, delegation, unknown tools, and unrecognized edit payloads are denied even for active tasks. Do not route an edit through another tool, session, disabled hook, or modified context to bypass a refusal. Explain an unsupported verification or Git operation to the user; a reservation does not make that operation supported by the adapter. Already-running commands and external processes are not stopped by a gate denial.
+Only native file edits (`Edit`, `Write`, `MultiEdit`, Codex `apply_patch`) are gated; unrecognized edit payloads are denied. Shell commands, tests, builds, Git, subagents, and other tools follow the client's normal permissions. Coordination is cooperative: never use the shell, a script, a subagent, another session, a disabled hook, or a modified context to write files outside your accepted reservation or to bypass a refusal. Already-running commands and external processes are not stopped by a gate denial.
 
 ## Handle a block or stop
 
@@ -74,7 +74,7 @@ New tasks, revisions, PR links, plan changes, and scope expansion wait for fresh
 
 ## Finish and track the PR
 
-Use the normal authorized Git/PR workflow for commits, pushes, PR creation, review, and merge; this coordination service performs none of them, and its adapter may refuse those tools. Link an **existing** PR with `link_pull_request` using the exact PR number in the workspace's bound repository. Linking changes the task revision and refreshes acceptance only if it remains active and eligible; reread the response before further edits. Replacing a link requires stopped-write acknowledgement and clears old merge evidence.
+Use the normal authorized Git/PR workflow for commits, pushes, PR creation, review, and merge; this coordination service performs none of them. Link an **existing** PR with `link_pull_request` using the exact PR number in the workspace's bound repository. Linking changes the task revision and refreshes acceptance only if it remains active and eligible; reread the response before further edits. Replacing a link requires stopped-write acknowledgement and clears old merge evidence.
 
 When editing is finished, call `report_completion`. Wait for all admitted/background writes to stop, then call `acknowledge_stop` with the current revision. Refresh `task_status` between mutations as necessary; lifecycle mutations can change the revision. If already acknowledged, report completion at that latest revision without resuming edits.
 
