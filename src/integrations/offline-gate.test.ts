@@ -35,7 +35,6 @@ describe('accepted-scope offline action gate', () => {
     expect(await evaluateGate(api, context, invocation)).toMatchObject({ allow: true, reason: expect.stringContaining('signed offline receipt') })
     expect((await evaluateGate(api, context, { ...invocation, name: 'Write', input: { file_path: 'another.ts', content: 'new file' } })).allow).toBe(false)
     expect((await evaluateGate(api, { ...context, taskId: undefined }, invocation)).allow).toBe(false)
-    expect((await evaluateGate(api, context, { ...invocation, name: 'Bash', input: { command: 'touch source.ts' } })).allow).toBe(false)
   })
 
   it('preserves parser proof for offline function reservations', async () => {

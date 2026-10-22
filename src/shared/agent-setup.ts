@@ -20,6 +20,7 @@ export interface AgentSetupEnvironment {
 export interface AgentSetupRequest {
   agent: AgentKind
   ownerId: string
+  /** Empty for Claude Code generates a new session ID. */
   sessionId: string
   expectedRepositoryRoot: string
   expectedEndpointFile: string
@@ -31,6 +32,9 @@ export interface PreparedAgentSetup {
   contextFile: string
   endpointFile: string
   launcherFile: string
+  sessionId: string
+  /** Claude Code only: starts or resumes the bound session after the snippets are merged. */
+  launchCommand?: string
   files: Array<{ path: string; contents: string }>
   instructions: string
   notices: string[]

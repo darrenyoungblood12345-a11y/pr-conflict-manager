@@ -90,9 +90,17 @@ describe('current workspace action gate', () => {
     expect((await evaluateGate(api, context, invocation)).allow).toBe(false)
   })
 
-  it.each(['Bash', 'Shell', 'bash', 'Agent', 'Task', 'python', 'unrecognized'])('refuses %s because its repository writes cannot be proven', async name => {
+  it.each(['Bash', 'Shell', 'bash', 'Agent', 'Task', 'Skill', 'TodoWrite', 'ToolSearch', 'WebFetch', 'Read', 'Grep', 'Glob', 'unrecognized'])('leaves %s to the client permission policy without a task, session match, or coordinator', async name => {
     const { api, context, invocation } = await environment()
-    expect((await evaluateGate(api, context, { ...invocation, name, input: { command: 'git status' } })).allow).toBe(false)
+    const unbound = { ...invocation, name, input: { command: 'npm test' }, sessionId: 'another-session' }
+    expect((await evaluateGate(api, { ...context, taskId: undefined, revision: undefined }, unbound)).allow).toBe(true)
+    expect(api.snapshot).not.toHaveBeenCalled()
+  })
+
+  it('still requires a bound session and registered task for native edits', async () => {
+    const { api, context, invocation } = await environment()
+    expect((await evaluateGate(api, context, { ...invocation, sessionId: 'another-session' })).allow).toBe(false)
+    expect(await evaluateGate(api, { ...context, taskId: undefined, revision: undefined }, invocation)).toMatchObject({ allow: false, reason: expect.stringContaining('register a task') })
   })
 
   it('requires whole-file claims when a native edit cannot prove symbol-level scope', async () => {
@@ -169,12 +177,12 @@ describe('current workspace action gate', () => {
     expect((await evaluateGate(api, context, { ...invocation, name: 'Write', cwd: path.join(root, 'src'), input: { file_path: 'new.ts', content: 'new content' } })).allow).toBe(true)
   })
 
-  it('allows only exact workspace coordination tools while blocked without needing service reachability', async () => {
+  it('recognizes only exact workspace coordination tools while blocked without needing service reachability', async () => {
     const { api, context, invocation } = await environment()
     vi.mocked(api.snapshot).mockRejectedValue(new Error('offline'))
-    expect((await evaluateGate(api, context, { ...invocation, name: 'mcp__agent_pr_monitor__read_plan' })).allow).toBe(true)
+    expect(await evaluateGate(api, context, { ...invocation, name: 'mcp__agent_pr_monitor__read_plan' })).toMatchObject({ allow: true, reason: expect.stringContaining('coordination') })
     expect(api.snapshot).not.toHaveBeenCalled()
-    expect((await evaluateGate(api, context, { ...invocation, name: 'mcp__evil__agent_pr_monitor__read_plan' })).allow).toBe(false)
+    expect(await evaluateGate(api, context, { ...invocation, name: 'mcp__evil__agent_pr_monitor__read_plan' })).toMatchObject({ allow: true, reason: expect.stringContaining('client permission policy') })
     expect(isCoordinationTool({ ...invocation, name: 'mcp__agent_pr_monitor__read_plan', serverName: 'evil' })).toBe(false)
     expect(isCoordinationTool({ ...invocation, name: 'read_plan', serverName: 'agent_pr_monitor', serverSource: 'sdk' })).toBe(false)
   })

@@ -12,7 +12,7 @@ interface SetupOptions {
 const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
 const json = (value: unknown) => JSON.stringify(value, null, 2) + '\n'
 
-export const PROJECT_INSTRUCTIONS = `Before repository work, call agent_pr_monitor read_plan and list_tasks. Use repository_status and list_symbols, or bounded native Read/Glob/Grep source inspection, to understand the selected clone before registering work. Propose a good task description, branch/base commit, and qualified functions to add/change/remove, including shared interfaces. Supported native Edit, Write, and MultiEdit payloads can admit a change strictly inside an existing, uniquely parsed reserved function. New functions/files, function boundary changes, unsupported or ambiguous parsing, and Codex apply_patch need whole-file reservations. Never start from a registration response alone: native gates verify the current task and reservation. Already accepted LAN work can continue offline only within its verified signed reservation; new tasks and scope expansion wait for authority. A later observed stop permanently revokes that revision's saved receipt. Arbitrary shell, delegation, and unknown tools remain unqualified and are denied. If blocked, stop subsequent edits, explain the exact conflict to the user, and use coordination tools to revise or abandon work. Acknowledge stopped only after all already-admitted/background writes finish. Link an existing PR using link_pull_request; report completion when editing ends. Reservations remain until stop acknowledgement and observed merge. Do not create or merge PRs through this coordination service. Generated adapters still require real-client verification for the installed version.`
+export const PROJECT_INSTRUCTIONS = `Before repository work, call agent_pr_monitor read_plan and list_tasks. Use repository_status and list_symbols, or bounded native Read/Glob/Grep source inspection, to understand the selected clone before registering work. Propose a good task description, branch/base commit, and qualified functions to add/change/remove, including shared interfaces. Supported native Edit, Write, and MultiEdit payloads can admit a change strictly inside an existing, uniquely parsed reserved function. New functions/files, function boundary changes, unsupported or ambiguous parsing, and Codex apply_patch need whole-file reservations. Never start from a registration response alone: native gates verify the current task and reservation. Already accepted LAN work can continue offline only within its verified signed reservation; new tasks and scope expansion wait for authority. A later observed stop permanently revokes that revision's saved receipt. Only native file edits are gated; shell, tests, Git, and other tools follow the client's normal permissions, so never use them to write files outside your reservation. If blocked, stop subsequent edits, explain the exact conflict to the user, and use coordination tools to revise or abandon work. Acknowledge stopped only after all already-admitted/background writes finish. Link an existing PR using link_pull_request; report completion when editing ends. Reservations remain until stop acknowledgement and observed merge. Do not create or merge PRs through this coordination service. Generated adapters still require real-client verification for the installed version.`
 
 export const generateSetupSnippets = (agent: AgentKind, options: SetupOptions) => {
   Object.values(options).forEach(value => {
@@ -40,10 +40,14 @@ export const generateSetupSnippets = (agent: AgentKind, options: SetupOptions) =
   }
   if (agent === 'claude-code') {
     files.push({ path: '.mcp.json', contents: json({ mcpServers: { agent_pr_monitor: mcp } }) }, {
-      path: '.claude/settings.json',
-      contents: json({ hooks: { PreToolUse: [{ matcher: '*', hooks: [{ type: 'command', command: hookCommand, timeout: 10, onFailure: 'block' }] }] } }),
+      // Personal settings: the hook points at this Mac's private files and must never reach teammates.
+      path: '.claude/settings.local.json',
+      contents: json({ hooks: { PreToolUse: [{ matcher: 'Edit|Write|MultiEdit', hooks: [{ type: 'command', command: hookCommand, timeout: 10, onFailure: 'block' }] }] } }),
     })
-    notices.push('Requires Claude Code >=2.1.295 for onFailure:block. Verify the installed version before relying on failure blocking.')
+    notices.push(
+      'Requires Claude Code >=2.1.295 for onFailure:block. Verify the installed version before relying on failure blocking.',
+      'Keep .claude/settings.local.json and .mcp.json out of Git: both reference private files on this Mac.',
+    )
   }
   if (agent === 'cursor') {
     files.push({ path: '.cursor/mcp.json', contents: json({ mcpServers: { agent_pr_monitor: mcp } }) }, {

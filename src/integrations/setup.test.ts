@@ -19,6 +19,13 @@ describe('project setup snippet generation', () => {
     expect(setup.notices.join(' ')).toContain('>=2.1.295')
   })
 
+  it('keeps the Claude hook in personal settings and runs it only for native edits', () => {
+    const setup = generateSetupSnippets('claude-code', options)
+    expect(setup.files.map(file => file.path)).toEqual(['.mcp.json', '.claude/settings.local.json'])
+    expect(JSON.parse(setup.files[1].contents).hooks.PreToolUse[0].matcher).toBe('Edit|Write|MultiEdit')
+    expect(setup.notices.join(' ')).toContain('out of Git')
+  })
+
   it('sets Cursor failClosed and covers all Agent tools with preToolUse', () => {
     const setup = generateSetupSnippets('cursor', options)
     const hooks = JSON.parse(setup.files[1].contents)
