@@ -43,6 +43,21 @@ describe('durable receipt acceptance and revocation', () => {
     expect((await acceptContext(file, context, revised, signedReceipt(revised))).revision).toBe(2)
   })
 
+  it.each(['constructor', 'toString', 'valueOf', 'hasOwnProperty'])('persists the stop revocation for a task named after the inherited member %s', async id => {
+    const { file, context } = await fixture()
+    const task = sampleTask({ id })
+    await acceptContext(file, context, task, signedReceipt(task))
+    expect((await loadContext(file)).acceptedOfflineReceipt).toBeDefined()
+    await observeContext(file, context, sampleSnapshot(sampleTask({ id, stopAcknowledged: true }), { hasAuthority: false }))
+    const revoked = await loadContext(file)
+    expect(Object.hasOwn(revoked.offlineRevokedThrough ?? {}, id)).toBe(true)
+    expect(revoked.offlineRevokedThrough?.[id]).toBe(1)
+    expect(revoked.acceptedOfflineReceipt).toBeUndefined()
+    await expect(acceptContext(file, context, task, signedReceipt(task))).rejects.toThrow('superseded')
+    const revised = sampleTask({ id, revision: 2 })
+    expect((await acceptContext(file, context, revised, signedReceipt(revised))).revision).toBe(2)
+  })
+
   it('refuses changed repository setup and leaves the prior file intact', async () => {
     const { file, context } = await fixture()
     await writeFile(file, JSON.stringify({ ...context, repositoryRoot: '/different' }))

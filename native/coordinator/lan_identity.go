@@ -1,6 +1,7 @@
 package coordinator
 
 import (
+	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
@@ -73,7 +74,22 @@ func randomSerial() *big.Int {
 	return value
 }
 
+// Leaves live one year; a saved workspace reissues its own once this little remains.
+const leafRenewalWindow = 30 * 24 * time.Hour
+
+func leafTemplate(workspaceID, deviceID string, now time.Time) *x509.Certificate {
+	return &x509.Certificate{SerialNumber: randomSerial(), Subject: pkix.Name{CommonName: logicalName(workspaceID, deviceID)}, DNSNames: []string{logicalName(workspaceID, deviceID)}, NotBefore: now.Add(-5 * time.Minute), NotAfter: now.AddDate(1, 0, 0), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}}
+}
+
+func encodePEM(kind string, data []byte) string {
+	return string(pem.EncodeToMemory(&pem.Block{Type: kind, Bytes: data}))
+}
+
 func GenerateLANIdentity(workspaceID, deviceID string) (LANIdentity, error) {
+	return generateLANIdentity(workspaceID, deviceID, time.Now())
+}
+
+func generateLANIdentity(workspaceID, deviceID string, now time.Time) (LANIdentity, error) {
 	if !lanIdentifier.MatchString(workspaceID) || !lanIdentifier.MatchString(deviceID) {
 		return LANIdentity{}, errors.New("workspace and device IDs must be bounded lowercase DNS labels")
 	}
@@ -81,7 +97,6 @@ func GenerateLANIdentity(workspaceID, deviceID string) (LANIdentity, error) {
 	if err != nil {
 		return LANIdentity{}, errors.New("cannot generate device identity")
 	}
-	now := time.Now()
 	ca := &x509.Certificate{SerialNumber: randomSerial(), Subject: pkix.Name{CommonName: logicalName(workspaceID, deviceID)}, NotBefore: now.Add(-5 * time.Minute), NotAfter: now.AddDate(10, 0, 0), IsCA: true, BasicConstraintsValid: true, MaxPathLen: 0, MaxPathLenZero: true, KeyUsage: x509.KeyUsageCertSign | x509.KeyUsageCRLSign}
 	caDER, err := x509.CreateCertificate(rand.Reader, ca, ca, caPublic, caPrivate)
 	if err != nil {
@@ -91,17 +106,74 @@ func GenerateLANIdentity(workspaceID, deviceID string) (LANIdentity, error) {
 	if err != nil {
 		return LANIdentity{}, errors.New("cannot generate device certificate")
 	}
-	leaf := &x509.Certificate{SerialNumber: randomSerial(), Subject: pkix.Name{CommonName: logicalName(workspaceID, deviceID)}, DNSNames: []string{logicalName(workspaceID, deviceID)}, NotBefore: now.Add(-5 * time.Minute), NotAfter: now.AddDate(1, 0, 0), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}}
-	leafDER, err := x509.CreateCertificate(rand.Reader, leaf, ca, public, caPrivate)
+	leafDER, err := x509.CreateCertificate(rand.Reader, leafTemplate(workspaceID, deviceID, now), ca, public, caPrivate)
 	if err != nil {
 		return LANIdentity{}, errors.New("cannot create device certificate")
 	}
 	caKey, _ := x509.MarshalPKCS8PrivateKey(caPrivate)
 	leafKey, _ := x509.MarshalPKCS8PrivateKey(private)
-	encode := func(kind string, data []byte) string {
-		return string(pem.EncodeToMemory(&pem.Block{Type: kind, Bytes: data}))
+	return LANIdentity{CACertPEM: encodePEM("CERTIFICATE", caDER), CAKeyPEM: encodePEM("PRIVATE KEY", caKey), CertPEM: encodePEM("CERTIFICATE", leafDER), KeyPEM: encodePEM("PRIVATE KEY", leafKey)}, nil
+}
+
+// storedIdentity checks everything startup validation does except validity
+// dates, so an expired leaf can be recognized as this device's own.
+func storedIdentity(identity LANIdentity, workspaceID, deviceID string) (*x509.Certificate, crypto.PrivateKey, *x509.Certificate, error) {
+	if !lanIdentifier.MatchString(workspaceID) || !lanIdentifier.MatchString(deviceID) {
+		return nil, nil, nil, errors.New("workspace and device IDs must be bounded lowercase DNS labels")
 	}
-	return LANIdentity{CACertPEM: encode("CERTIFICATE", caDER), CAKeyPEM: encode("PRIVATE KEY", caKey), CertPEM: encode("CERTIFICATE", leafDER), KeyPEM: encode("PRIVATE KEY", leafKey)}, nil
+	ca, err := parseCA(identity.CACertPEM, workspaceID, deviceID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	caPair, err := tls.X509KeyPair([]byte(identity.CACertPEM), []byte(identity.CAKeyPEM))
+	if err != nil || len(caPair.Certificate) != 1 {
+		return nil, nil, nil, errors.New("device authority private key does not match")
+	}
+	pair, err := tls.X509KeyPair([]byte(identity.CertPEM), []byte(identity.KeyPEM))
+	if err != nil || len(pair.Certificate) != 1 {
+		return nil, nil, nil, errors.New("device leaf private key does not match")
+	}
+	leaf, err := x509.ParseCertificate(pair.Certificate[0])
+	if err != nil || leaf.IsCA || len(leaf.DNSNames) != 1 || leaf.DNSNames[0] != logicalName(workspaceID, deviceID) || leaf.CheckSignatureFrom(ca) != nil {
+		return nil, nil, nil, errors.New("invalid device leaf identity")
+	}
+	return ca, caPair.PrivateKey, leaf, nil
+}
+
+// reissueLANLeaf signs a new certificate for the existing leaf key with the
+// stored device authority. Peers and saved Raft state pin only that authority,
+// so the authority, its fingerprint and both keys stay exactly as they were.
+func reissueLANLeaf(identity LANIdentity, workspaceID, deviceID string, now time.Time) (LANIdentity, error) {
+	ca, authority, leaf, err := storedIdentity(identity, workspaceID, deviceID)
+	if err != nil {
+		return LANIdentity{}, err
+	}
+	leafDER, err := x509.CreateCertificate(rand.Reader, leafTemplate(workspaceID, deviceID, now), ca, leaf.PublicKey, authority)
+	if err != nil {
+		return LANIdentity{}, errors.New("cannot create device certificate")
+	}
+	identity.CertPEM = encodePEM("CERTIFICATE", leafDER)
+	return identity, nil
+}
+
+// RenewLANIdentity returns the identity unchanged unless its leaf has expired or
+// is about to, in which case only the leaf certificate is reissued.
+func RenewLANIdentity(identity LANIdentity, workspaceID, deviceID string) (LANIdentity, error) {
+	return renewLANIdentity(identity, workspaceID, deviceID, time.Now())
+}
+
+func renewLANIdentity(identity LANIdentity, workspaceID, deviceID string, now time.Time) (LANIdentity, error) {
+	ca, _, leaf, err := storedIdentity(identity, workspaceID, deviceID)
+	if err != nil {
+		return LANIdentity{}, err
+	}
+	if now.Before(ca.NotBefore) || now.After(ca.NotAfter) {
+		return LANIdentity{}, errors.New("device authority is outside its validity period")
+	}
+	if now.Before(leaf.NotAfter.Add(-leafRenewalWindow)) {
+		return identity, nil
+	}
+	return reissueLANLeaf(identity, workspaceID, deviceID, now)
 }
 
 func parseCA(encoded, workspaceID, deviceID string) (*x509.Certificate, error) {
@@ -122,6 +194,14 @@ func DecodeLANConfig(data []byte) (LANConfig, error) {
 		return config, errors.New("invalid private LAN startup configuration")
 	}
 	return config, nil
+}
+
+func DecodeLANIdentity(data []byte) (LANIdentity, error) {
+	var identity LANIdentity
+	if len(data) > 64*1024 || decodeStrict(data, &identity) != nil {
+		return LANIdentity{}, errors.New("invalid private LAN identity")
+	}
+	return identity, nil
 }
 
 func validateIdentity(identity LANIdentity, workspaceID, deviceID string) (tls.Certificate, *x509.Certificate, error) {

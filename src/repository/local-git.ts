@@ -106,8 +106,8 @@ const safeOrigin = (value: string) => {
     url.hash = ''
     return url.toString()
   } catch {
-    // SCP-style SSH remotes have a username but no URL parser representation.
-    return origin.replace(/^[^/@]+@(?=[^/:]+:)/, 'git@')
+    // An unparsable remote cannot be redacted reliably, so none of it is reported.
+    return undefined
   }
 }
 

@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
-import { createWorkspaceClient, WorkspaceConnectionError } from '../shared/client.js'
+import { createWorkspaceClient } from '../shared/client.js'
 import type { AgentKind, EndpointConfig, WorkspaceApi } from '../shared/contracts.js'
 import { createWorkspaceMcpServer } from './mcp.js'
 import { agentKindSchema } from './schemas.js'
@@ -16,12 +16,13 @@ import { ensureRepositoryBinding } from './repository-guard.js'
 const endpointSchema = z.object({ url: z.string().url(), token: z.string().min(32) }).strict()
 const loadEndpoint = async (file: string): Promise<EndpointConfig> => endpointSchema.parse(await readPrivateJson(file))
 const parserOptions = () => ({ assetDirectory: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'parser-assets') })
+/** MCP and OpenCode processes outlive the app, which publishes a new endpoint on every start. */
 const loadApi = async (file: string): Promise<WorkspaceApi> => {
-  try { return createWorkspaceClient(await loadEndpoint(file)) } catch (error) {
+  const published = () => loadEndpoint(file).catch(error => {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-    const unavailable = async (): Promise<never> => { throw new WorkspaceConnectionError('The local app is closed', true, true) }
-    return { snapshot: unavailable, command: unavailable }
-  }
+    return undefined
+  })
+  return createWorkspaceClient(await published(), published)
 }
 
 export const createOpenCodePluginFromFiles = async (options: { endpointFile: string; contextFile: string; cwd: string }) => {

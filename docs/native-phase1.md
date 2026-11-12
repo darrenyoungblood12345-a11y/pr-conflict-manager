@@ -55,6 +55,13 @@ passwords reach the helper through one bounded JSON line on a private pipe with
 `--lan-config-stdin`; they are not arguments, environment variables, Raft entries,
 or readiness fields. The exact configuration types live in `lan_identity.go`.
 
+Leaf certificates last one year. Before a saved workspace is reopened,
+`--renew-lan-identity --workspace-id <id> --id <device>` reads the stored
+identity as one bounded JSON line on the private pipe and writes it back; when
+the leaf has expired or has under 30 days left, only the leaf certificate is
+reissued by the device's own CA. The CA, its fingerprint, and both private keys
+are unchanged, so peers and saved Raft state that pin the CA keep trusting it.
+
 Workspace and device IDs are lowercase DNS labels. The selected listen address
 is a numeric unicast private/link-local/loopback address, with explicit control
 and Raft ports (zero selects ephemeral ports). Public readiness adds

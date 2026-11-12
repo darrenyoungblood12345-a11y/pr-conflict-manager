@@ -27,8 +27,9 @@ const fixture = () => {
   const activate = vi.fn(async (_profile: WorkspaceProfile, _join?: LanConfig['join'], _bootstrap?: boolean) => undefined)
   const status = vi.fn(async (): Promise<LanStatus | null> => null)
   const generateIdentity = vi.fn(async () => identity)
-  const pool = createWorkspacePool({ profiles, activate, status, generateIdentity, interfaces: () => [{ name: 'test', address: '127.0.0.1' }] })
-  return { pool, saved, profiles, activate, status, generateIdentity }
+  const renewIdentity = vi.fn(async (_workspaceId: string, _deviceId: string, stored: LanIdentity) => stored)
+  const pool = createWorkspacePool({ profiles, activate, status, generateIdentity, renewIdentity, interfaces: () => [{ name: 'test', address: '127.0.0.1' }] })
+  return { pool, saved, profiles, activate, status, generateIdentity, renewIdentity }
 }
 const statusFor = (profile: WorkspaceProfile, stage: LanStatus['stage'] = 'active'): LanStatus => ({
   workspaceId: profile.config.workspaceId, deviceId: profile.deviceId, stage, hasAuthority: true,
@@ -45,6 +46,38 @@ describe('workspace pool lifecycle and pinned enrollment', () => {
     expect(JSON.stringify(profile)).not.toContain(createInput.password)
     await pool.open({ id: profile.id, listenHost: '127.0.0.1' })
     expect(activate.mock.calls[1]).toEqual([profile, undefined, false])
+  })
+
+  it('reopens a saved workspace with its expired leaf reissued, persisted before activation, under the same authority and keys', async () => {
+    const { pool, saved, profiles, activate, renewIdentity } = fixture()
+    await pool.create(createInput)
+    const profile = [...saved.values()][0]
+    await pool.open({ id: profile.id, listenHost: '127.0.0.1' })
+    expect(renewIdentity).toHaveBeenLastCalledWith(profile.config.workspaceId, profile.deviceId, identity)
+    expect(saved.get(profile.id)).toEqual(profile)
+    renewIdentity.mockResolvedValueOnce({ ...identity, certPEM: 'renewed-leaf' })
+    await pool.open({ id: profile.id, listenHost: '127.0.0.1' })
+    const renewed = { ...profile, config: { ...profile.config, identity: { ...identity, certPEM: 'renewed-leaf' } } }
+    expect(saved.get(profile.id)).toEqual(renewed)
+    expect(activate.mock.calls[2]).toEqual([renewed, undefined, false])
+    expect(profiles.save.mock.invocationCallOrder[2]).toBeLessThan(activate.mock.invocationCallOrder[2])
+    await pool.open({ id: profile.id, listenHost: '127.0.0.1' })
+    expect(renewIdentity).toHaveBeenLastCalledWith(profile.config.workspaceId, profile.deviceId, renewed.config.identity)
+  })
+
+  it.each([
+    ['caCertPEM', 'another-ca'], ['caKeyPEM', 'another-ca-key'], ['keyPEM', 'another-leaf-key'],
+  ] as const)('refuses a renewal that changes %s, or that fails, and leaves the saved workspace untouched', async (field, value) => {
+    const { pool, saved, profiles, activate, renewIdentity } = fixture()
+    await pool.create(createInput)
+    const profile = [...saved.values()][0]
+    renewIdentity.mockResolvedValueOnce({ ...identity, certPEM: 'renewed-leaf', [field]: value })
+    await expect(pool.open({ id: profile.id, listenHost: '127.0.0.1' })).rejects.toThrow('device identity')
+    renewIdentity.mockRejectedValueOnce(new Error('The native helper could not renew the workspace identity.'))
+    await expect(pool.open({ id: profile.id, listenHost: '127.0.0.1' })).rejects.toThrow('could not renew')
+    expect(saved.get(profile.id)).toEqual(profile)
+    expect(profiles.save).toHaveBeenCalledTimes(1)
+    expect(activate).toHaveBeenCalledTimes(1)
   })
 
   it('retries the exact identity/request ID while keeping retry passwords and verifier changes out of persistence', async () => {

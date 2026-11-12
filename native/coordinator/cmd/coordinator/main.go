@@ -26,6 +26,7 @@ func run() error {
 	options := coordinator.Options{}
 	exitOnStdinClose := false
 	generateIdentity := false
+	renewIdentity := false
 	lanConfigStdin := false
 	workspaceID := ""
 	flag.StringVar(&options.ID, "id", "", "stable local node identifier")
@@ -36,12 +37,13 @@ func run() error {
 	flag.BoolVar(&options.BootstrapIfNew, "bootstrap-if-new", false, "bootstrap only if no persisted Raft state exists; otherwise resume the saved configuration")
 	flag.BoolVar(&exitOnStdinClose, "exit-on-stdin-close", false, "stop gracefully when the supervising parent's stdin pipe closes")
 	flag.BoolVar(&generateIdentity, "generate-lan-identity", false, "emit a new private device identity to the supervising parent and exit")
-	flag.StringVar(&workspaceID, "workspace-id", "", "workspace identifier for identity generation")
+	flag.BoolVar(&renewIdentity, "renew-lan-identity", false, "read one private device identity JSON line from the parent pipe, emit it with an expired or expiring leaf reissued, and exit")
+	flag.StringVar(&workspaceID, "workspace-id", "", "workspace identifier for identity generation or renewal")
 	flag.BoolVar(&lanConfigStdin, "lan-config-stdin", false, "read one bounded private LAN configuration JSON line from the parent pipe")
 	flag.Parse()
 	if generateIdentity {
-		if lanConfigStdin {
-			return fmt.Errorf("identity generation and LAN startup are separate operations")
+		if lanConfigStdin || renewIdentity {
+			return fmt.Errorf("identity generation, renewal and LAN startup are separate operations")
 		}
 		identity, err := coordinator.GenerateLANIdentity(workspaceID, options.ID)
 		if err != nil {
@@ -50,6 +52,26 @@ func run() error {
 		return json.NewEncoder(os.Stdout).Encode(identity)
 	}
 	input := bufio.NewReaderSize(os.Stdin, 64*1024+1)
+	if renewIdentity {
+		if lanConfigStdin {
+			return fmt.Errorf("identity generation, renewal and LAN startup are separate operations")
+		}
+		// The identity carries private keys, so it arrives on the pipe, never in arguments.
+		line, err := input.ReadSlice('\n')
+		if err != nil || len(line) > 64*1024 {
+			return fmt.Errorf("a bounded private LAN identity JSON line is required")
+		}
+		identity, err := coordinator.DecodeLANIdentity(line)
+		clear(line)
+		if err != nil {
+			return err
+		}
+		renewed, err := coordinator.RenewLANIdentity(identity, workspaceID, options.ID)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(renewed)
+	}
 	if lanConfigStdin {
 		line, err := input.ReadSlice('\n')
 		if err != nil || len(line) > 64*1024 {

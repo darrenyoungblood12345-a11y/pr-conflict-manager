@@ -31,7 +31,8 @@ const inspectFile = async (root: string, file: FileGroup, options: SymbolOptions
     const canonical = await realpath(absolute)
     const relative = path.relative(root, canonical)
     if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) throw new Error('symbol-symlink')
-    const handle = await open(absolute, constants.O_RDONLY | constants.O_NOFOLLOW)
+    // O_NONBLOCK: opening a named pipe must not wait for a writer; isFile() below rejects it.
+    const handle = await open(absolute, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
     try {
       const before = await handle.stat()
       if (!before.isFile()) return { analysis: fallbackAnalysis(file.path, 'Scope must identify a regular file'), error: 'Scope must identify a regular file' }

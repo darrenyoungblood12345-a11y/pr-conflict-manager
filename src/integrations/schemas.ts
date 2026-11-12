@@ -88,3 +88,8 @@ export const agentContextSchema = z.object({
 }).strict()
 
 export type AgentContext = z.infer<typeof agentContextSchema>
+
+/** Task ids may name inherited members such as `constructor`, so a floor only counts as an own property. */
+export const revocationFloor = (floors: AgentContext['offlineRevokedThrough'], taskId: string): number => (
+  floors && Object.hasOwn(floors, taskId) ? floors[taskId] : -1
+)

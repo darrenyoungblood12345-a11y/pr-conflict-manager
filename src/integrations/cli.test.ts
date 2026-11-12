@@ -4,6 +4,7 @@ import { copyFile, mkdir, mkdtemp, readFile, realpath, rename, rm, symlink, writ
 import os from 'node:os'
 import path from 'node:path'
 import { execFile, spawn } from 'node:child_process'
+import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
@@ -208,6 +209,97 @@ describe('bundled integration process', () => {
     const result = await run('cursor', '{}')
     expect(result.code).toBe(2)
     expect(JSON.parse(result.stdout)).toHaveProperty('permission', 'deny')
+  })
+
+  const longLivedMcp = async () => {
+    const client = new Client({ name: 'stdio-test', version: '1' })
+    await client.connect(new StdioClientTransport({ command: process.execPath, args: [state.bundle, 'mcp', '--endpoint-file', state.endpointFile, '--context-file', state.contextFile], stderr: 'pipe' }))
+    return client
+  }
+  const readPlan = async (client: Client) => {
+    const response = await client.callTool({ name: 'read_plan', arguments: {} })
+    return { isError: response.isError, value: responseValue(response) }
+  }
+  /** Stands in for the app instance that published the endpoint before a restart. */
+  const earlierApp = async () => {
+    const earlierToken = 'earlier_private_local_token_'.repeat(2)
+    const mode = { rejectToken: false }
+    const earlier = createServer((request, response) => {
+      if (mode.rejectToken || request.headers.authorization !== `Bearer ${earlierToken}`) {
+        response.writeHead(401).end()
+        return
+      }
+      response.setHeader('Content-Type', 'application/json')
+      response.end(JSON.stringify(sampleSnapshot(sampleTask(), { plan: { revision: 1, markdown: 'Earlier plan' } })))
+    })
+    await new Promise<void>((resolve, reject) => {
+      earlier.once('error', reject)
+      earlier.listen(0, '127.0.0.1', resolve)
+    })
+    const address = earlier.address()
+    if (!address || typeof address === 'string') throw new Error('No test service address')
+    const close = () => new Promise<void>(resolve => {
+      earlier.close(() => resolve())
+      earlier.closeAllConnections()
+    })
+    return { endpoint: { url: `http://127.0.0.1:${address.port}`, token: earlierToken }, mode, close }
+  }
+
+  it('reaches an endpoint published after its MCP process started with the app closed', async () => {
+    await rm(state.endpointFile)
+    const client = await longLivedMcp()
+    try {
+      expect((await readPlan(client)).isError).toBe(true)
+      await writeFile(state.endpointFile, JSON.stringify({ url: state.url, token }), { mode: 0o600 })
+      expect(await readPlan(client)).toMatchObject({ isError: false, value: { plan: { markdown: 'Implement carefully' } } })
+    } finally {
+      await client.close()
+    }
+  })
+
+  it.each(['refuses connections', 'rejects the old token', 'still answers'] as const)('follows the endpoint a restarted app republishes while the earlier one %s, without restarting MCP', async earlierEndpoint => {
+    const earlier = await earlierApp()
+    const client = await (async () => {
+      await writeFile(state.endpointFile, JSON.stringify(earlier.endpoint), { mode: 0o600 })
+      return longLivedMcp()
+    })().catch(async error => { await earlier.close(); throw error })
+    try {
+      expect(await readPlan(client)).toMatchObject({ isError: false, value: { plan: { markdown: 'Earlier plan' } } })
+      if (earlierEndpoint === 'refuses connections') await earlier.close()
+      if (earlierEndpoint === 'rejects the old token') earlier.mode.rejectToken = true
+      await writeFile(state.endpointFile, JSON.stringify({ url: state.url, token }), { mode: 0o600 })
+      expect(await readPlan(client)).toMatchObject({ isError: false, value: { plan: { markdown: 'Implement carefully' } } })
+    } finally {
+      await client.close()
+      await earlier.close()
+    }
+  })
+
+  it('fails closed while a running MCP process sees a malformed endpoint file and recovers once it is valid', async () => {
+    const client = await longLivedMcp()
+    try {
+      expect((await readPlan(client)).isError).toBe(false)
+      await writeFile(state.endpointFile, JSON.stringify({ url: 'http://192.168.1.2:1234', token }), { mode: 0o600 })
+      expect((await readPlan(client)).isError).toBe(true)
+      await writeFile(state.endpointFile, '{invalid endpoint', { mode: 0o600 })
+      expect((await readPlan(client)).isError).toBe(true)
+      await writeFile(state.endpointFile, JSON.stringify({ url: state.url, token }), { mode: 0o600 })
+      expect((await readPlan(client)).isError).toBe(false)
+    } finally {
+      await client.close()
+    }
+  })
+
+  it('lets a long-lived OpenCode gate reach an endpoint published after it was created', async () => {
+    await rm(state.endpointFile)
+    await writeFile(state.contextFile, JSON.stringify({ ...sampleContext(state.repository), agent: 'opencode' }), { mode: 0o600 })
+    state.snapshot = sampleSnapshot(sampleTask({ agent: 'opencode' }))
+    const { createOpenCodePluginFromFiles } = await import(pathToFileURL(state.bundle).href) as typeof import('./cli.js')
+    const gate = await createOpenCodePluginFromFiles({ endpointFile: state.endpointFile, contextFile: state.contextFile, cwd: state.repository })
+    const edit = () => gate['tool.execute.before']({ tool: 'edit', sessionID: 'session-a' }, { args: { filePath: 'source.ts', oldString: 'const value = true', newString: 'const value = false' } })
+    await expect(edit()).rejects.toThrow('Agent PR Monitor:')
+    await writeFile(state.endpointFile, JSON.stringify({ url: state.url, token }), { mode: 0o600 })
+    await expect(edit()).resolves.toBeUndefined()
   })
 
   it('binds the actual clone origin, persists a signed receipt, continues with the app closed, and remembers a later stop', async () => {
