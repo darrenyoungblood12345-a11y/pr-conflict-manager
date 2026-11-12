@@ -63,6 +63,23 @@ describe('accepted-scope offline action gate', () => {
     expect((await evaluateGate(api, revoked, invocation)).allow).toBe(false)
   })
 
+  it.each(['constructor', 'toString', 'valueOf', 'hasOwnProperty'])('keeps a stopped task named %s revoked after a subsequent disconnection', async id => {
+    const { api, invocation, file, context: base } = await fixture()
+    const task = sampleTask({ id })
+    const context = { ...base, taskId: id, acceptedOfflineReceipt: signedReceipt(task) }
+    await writeFile(file, JSON.stringify(context), { mode: 0o600 })
+    expect((await evaluateGate(api, context, invocation)).allow).toBe(true)
+    vi.mocked(api.snapshot).mockResolvedValue(sampleSnapshot(sampleTask({ id, stopAcknowledged: true })))
+    expect((await evaluateGate(api, context, invocation, { onSnapshotObserved: state => observeContext(file, context, state) })).allow).toBe(false)
+    const revoked = await loadContext(file)
+    expect(revoked.offlineRevokedThrough?.[id]).toBe(1)
+    expect(revoked.acceptedOfflineReceipt).toBeUndefined()
+    vi.mocked(api.snapshot).mockRejectedValue(new WorkspaceConnectionError('Disconnected', true, true))
+    expect((await evaluateGate(api, revoked, invocation)).allow).toBe(false)
+    // A stale in-memory or restored receipt must not outlive the persisted floor.
+    expect((await evaluateGate(api, { ...revoked, acceptedOfflineReceipt: context.acceptedOfflineReceipt }, invocation)).allow).toBe(false)
+  })
+
   it('accepts older cached history only with the newer signed reservation and matching clone origin', async () => {
     const { api, context, invocation, root } = await fixture()
     vi.mocked(api.snapshot).mockResolvedValue(sampleSnapshot(sampleTask({ revision: 0, status: 'blocked' }), { hasAuthority: false, commitIndex: 1 }))

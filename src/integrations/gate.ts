@@ -3,6 +3,7 @@ import { open, realpath } from 'node:fs/promises'
 import path from 'node:path'
 import type { GateDecision, Snapshot, WorkspaceApi } from '../shared/contracts.js'
 import { WorkspaceConnectionError } from '../shared/client.js'
+import { revocationFloor } from './schemas.js'
 import type { AgentContext } from './schemas.js'
 import { canonicalScopePath } from './path-identity.js'
 import { MAX_ANALYSIS_BYTES, validateSymbolEdit } from '../symbols/index.js'
@@ -84,7 +85,7 @@ export const evaluateGate = async (
   if (!isEditTool(invocation.name)) return allow('Only file edits are coordinated; this tool follows the client permission policy')
   if (invocation.sessionId !== context.sessionId) return deny('This agent session is not bound to the task context.' + followup)
   if (!context.taskId || context.revision === undefined) return deny('Read the shared plan and register a task before starting work.' + followup)
-  if ((context.offlineRevokedThrough?.[context.taskId] ?? -1) >= context.revision) return deny('A later local stop or revision invalidated this task acceptance.' + followup)
+  if (revocationFloor(context.offlineRevokedThrough, context.taskId) >= context.revision) return deny('A later local stop or revision invalidated this task acceptance.' + followup)
   try {
     const admission = async () => {
       const state = await api.snapshot().catch(error => {

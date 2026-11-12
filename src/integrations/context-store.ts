@@ -3,7 +3,7 @@ import { mkdir, open, rename, rm } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import type { SignedTaskReceipt, Snapshot, Task } from '../shared/contracts.js'
-import { agentContextSchema } from './schemas.js'
+import { agentContextSchema, revocationFloor } from './schemas.js'
 import type { AgentContext } from './schemas.js'
 import { receiptInvalidatedBy, verifyOfflineReceipt } from './offline-receipt.js'
 import { isActiveTask } from './task-identity.js'
@@ -58,7 +58,7 @@ const updateContext = async (file: string, previous: AgentContext, change: (late
 }
 
 export const acceptContext = (file: string, previous: AgentContext, task: Task, receipt?: SignedTaskReceipt) => updateContext(file, previous, latest => {
-  if ((latest.offlineRevokedThrough?.[task.id] ?? -1) >= task.revision
+  if (revocationFloor(latest.offlineRevokedThrough, task.id) >= task.revision
     || (latest.taskId === task.id && (latest.revision ?? -1) > task.revision)) {
     throw new Error('A later local stop or task revision superseded this acceptance')
   }
@@ -74,20 +74,20 @@ export const observeContext = (file: string, previous: AgentContext, snapshot: S
   const floors = { ...latest.offlineRevokedThrough }
   Object.values(snapshot.tasks).filter(task => task.ownerId === latest.ownerId
     && task.sessionId === latest.sessionId && task.agent === latest.agent).forEach(task => {
-    if (!isActiveTask(task)) floors[task.id] = Math.max(floors[task.id] ?? -1, task.revision)
+    if (!isActiveTask(task)) floors[task.id] = Math.max(revocationFloor(floors, task.id), task.revision)
     else if (task.id === latest.taskId && latest.revision !== undefined && task.revision > latest.revision) {
-      floors[task.id] = Math.max(floors[task.id] ?? -1, task.revision - 1)
+      floors[task.id] = Math.max(revocationFloor(floors, task.id), task.revision - 1)
     }
   })
   if (latest.acceptedOfflineReceipt) {
     try {
       const receipt = verifyOfflineReceipt(latest)
       if (receiptInvalidatedBy(receipt, snapshot)) {
-        floors[receipt.task.id] = Math.max(floors[receipt.task.id] ?? -1, receipt.task.revision)
+        floors[receipt.task.id] = Math.max(revocationFloor(floors, receipt.task.id), receipt.task.revision)
         return { ...latest, offlineRevokedThrough: floors, acceptedOfflineReceipt: undefined }
       }
     } catch {
-      if (latest.taskId && latest.revision !== undefined) floors[latest.taskId] = Math.max(floors[latest.taskId] ?? -1, latest.revision)
+      if (latest.taskId && latest.revision !== undefined) floors[latest.taskId] = Math.max(revocationFloor(floors, latest.taskId), latest.revision)
       return { ...latest, offlineRevokedThrough: floors, acceptedOfflineReceipt: undefined }
     }
   }

@@ -2,7 +2,7 @@ import { verify, X509Certificate } from 'node:crypto'
 import { z } from 'zod'
 import type { SignedTaskReceipt, Snapshot, Task } from '../shared/contracts.js'
 import type { AgentContext } from './schemas.js'
-import { repositoryIdentitySchema, signedTaskReceiptSchema, taskSchema } from './schemas.js'
+import { repositoryIdentitySchema, revocationFloor, signedTaskReceiptSchema, taskSchema } from './schemas.js'
 import { isActiveTask, sameReservation } from './task-identity.js'
 
 const MAX_PAYLOAD_BYTES = 266240
@@ -41,7 +41,7 @@ export const verifyOfflineReceipt = (
   const receipt = signedTaskReceiptSchema.parse(value)
   const authority = context.offlineAuthority
   if (!authority || !context.taskId || context.revision === undefined) throw new Error('No bound offline authority')
-  if ((context.offlineRevokedThrough?.[context.taskId] ?? -1) >= context.revision) throw new Error('Receipt was locally revoked')
+  if (revocationFloor(context.offlineRevokedThrough, context.taskId) >= context.revision) throw new Error('Receipt was locally revoked')
   const logicalName = `${authority.deviceId}.${authority.workspaceId}.agent-pr-monitor.invalid`
   const ca = certificate(authority.caCertPEM)
   const leaf = certificate(receipt.certPEM)
