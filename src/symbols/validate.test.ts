@@ -1,7 +1,11 @@
-import { mkdtemp, realpath, rm, symlink, writeFile, mkdir } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
+import { constants } from 'node:fs'
+import { mkdtemp, open, realpath, rm, symlink, writeFile, mkdir } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import { promisify } from 'node:util'
 import { afterEach, describe, expect, it } from 'vitest'
+import type { Scope } from '../shared/contracts.js'
 import { validateDeclaredScopes } from './validate.js'
 import { LANGUAGE_FIXTURES } from './fixtures.js'
 
@@ -99,6 +103,26 @@ describe('declared function scopes against a selected local clone', () => {
     await mkdir(path.join(root, 'folder'))
     expect(await validateDeclaredScopes(root, [{ path: 'linked/outside.js', kind: 'symbol', symbol: 'secret' }])).toMatchObject({ ok: false, scopes: [] })
     expect(await validateDeclaredScopes(root, [{ path: 'folder', kind: 'file' }])).toMatchObject({ ok: false, scopes: [] })
+  })
+
+  it('rejects a named pipe scope at once instead of waiting for a writer', { timeout: 10000 }, async () => {
+    const root = await repository()
+    const pipe = path.join(root, 'pipe.ts')
+    await promisify(execFile)('mkfifo', [pipe])
+    const qualify = async (scope: Scope) => {
+      const timer = { id: undefined as NodeJS.Timeout | undefined }
+      const blocked = new Promise<'blocked on open'>(resolve => { timer.id = setTimeout(resolve, 2000, 'blocked on open') })
+      try {
+        const outcome = await Promise.race([validateDeclaredScopes(root, [scope]), blocked])
+        // A blocked open() holds its thread until a writer attaches. Attach one, so
+        // a regression fails this assertion instead of hanging the whole run.
+        if (outcome === 'blocked on open') await (await open(pipe, constants.O_RDWR | constants.O_NONBLOCK)).close()
+        return outcome
+      } finally { clearTimeout(timer.id) }
+    }
+    const expected = { ok: false, scopes: [], errors: [{ path: 'pipe.ts', reason: 'Scope must identify a regular file' }] }
+    expect(await qualify({ path: 'pipe.ts', kind: 'symbol', symbol: 'run' })).toMatchObject(expected)
+    expect(await qualify({ path: 'pipe.ts', kind: 'file' })).toMatchObject(expected)
   })
 
   it('falls back for invalid source bytes without inventing UTF-8 symbol ranges', async () => {
