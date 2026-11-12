@@ -13,6 +13,8 @@ const retryInput = openInput.extend({ password: z.string().min(1).max(1024), fin
 interface Dependencies {
   profiles: ReturnType<typeof createWorkspaceProfileStore>
   generateIdentity(workspaceId: string, deviceId: string): Promise<LanIdentity>
+  /** Returns the identity as stored, or with an expired or expiring leaf certificate reissued by its own authority. */
+  renewIdentity(workspaceId: string, deviceId: string, identity: LanIdentity): Promise<LanIdentity>
   activate(profile: WorkspaceProfile, initialJoin?: LanConfig['join'], bootstrapNewWorkspace?: boolean): Promise<void>
   status(): Promise<LanStatus | null>
   interfaces?: typeof lanInterfaces
@@ -101,7 +103,13 @@ export const createWorkspacePool = (dependencies: Dependencies) => {
     const listenHost = host(input.listenHost)
     const loaded = await dependencies.profiles.load(input.id)
     if (loaded.enrollment) throw new Error('This workspace has unfinished enrollment. Open its saved invitation and retry enrollment explicitly.')
-    const profile = { ...loaded, config: { ...loaded.config, listenHost } }
+    const stored = loaded.config.identity
+    const identity = await dependencies.renewIdentity(loaded.config.workspaceId, loaded.deviceId, stored)
+    // Peers and saved state pin the device authority, so only the leaf certificate may differ.
+    if (identity.caCertPEM !== stored.caCertPEM || identity.caKeyPEM !== stored.caKeyPEM || identity.keyPEM !== stored.keyPEM) {
+      throw new Error('Renewal changed the saved device identity. The workspace was not opened.')
+    }
+    const profile = { ...loaded, config: { ...loaded.config, identity, listenHost } }
     await dependencies.profiles.save(profile)
     await activate(profile)
   })

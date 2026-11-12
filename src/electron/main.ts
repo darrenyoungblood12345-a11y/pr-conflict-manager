@@ -232,22 +232,36 @@ const profiles = createWorkspaceProfileStore(path.join(app.getPath('userData'), 
   encrypt: value => safeStorage.encryptStringAsync(value),
   decrypt: async value => (await safeStorage.decryptStringAsync(value)).result,
 })
+/** `stored` carries private keys, so it reaches the helper through its pipe, never its arguments. */
+const helperIdentity = (args: string[], failure: string, stored?: LanIdentity) => new Promise<LanIdentity>((resolve, reject) => {
+  const executable = nativeExecutable()
+  if (!executable) return reject(new Error('Build the native helper before creating or opening a workspace.'))
+  const child = execFile(executable, args, {
+    encoding: 'utf8', timeout: 10000, maxBuffer: 65536,
+  }, (error, stdout) => {
+    if (error) return reject(new Error(failure))
+    try {
+      const identity = JSON.parse(stdout) as LanIdentity
+      if (!['caCertPEM', 'caKeyPEM', 'certPEM', 'keyPEM'].every(key => typeof identity[key as keyof LanIdentity] === 'string')) throw new Error()
+      resolve(identity)
+    } catch { reject(new Error('The native helper returned an invalid workspace identity.')) }
+  })
+  if (stored) {
+    // A helper that exits early closes the pipe; execFile's callback reports that failure.
+    child.stdin?.on('error', () => undefined)
+    child.stdin?.end(`${JSON.stringify(stored)}\n`)
+  }
+})
 const pool = createWorkspacePool({
   profiles,
-  generateIdentity: (workspaceId, deviceId) => new Promise<LanIdentity>((resolve, reject) => {
-    const executable = nativeExecutable()
-    if (!executable) return reject(new Error('Build the native helper before creating a workspace.'))
-    execFile(executable, ['--generate-lan-identity', '--workspace-id', workspaceId, '--id', deviceId], {
-      encoding: 'utf8', timeout: 10000, maxBuffer: 65536,
-    }, (error, stdout) => {
-      if (error) return reject(new Error('The native helper could not generate a workspace identity.'))
-      try {
-        const identity = JSON.parse(stdout) as LanIdentity
-        if (!['caCertPEM', 'caKeyPEM', 'certPEM', 'keyPEM'].every(key => typeof identity[key as keyof LanIdentity] === 'string')) throw new Error()
-        resolve(identity)
-      } catch { reject(new Error('The native helper returned an invalid workspace identity.')) }
-    })
-  }),
+  generateIdentity: (workspaceId, deviceId) => helperIdentity(
+    ['--generate-lan-identity', '--workspace-id', workspaceId, '--id', deviceId],
+    'The native helper could not generate a workspace identity.',
+  ),
+  renewIdentity: (workspaceId, deviceId, identity) => helperIdentity(
+    ['--renew-lan-identity', '--workspace-id', workspaceId, '--id', deviceId],
+    'The native helper could not renew the workspace identity.', identity,
+  ),
   activate: async (profile, initialJoin, bootstrapNewWorkspace) => {
     await initialStartup
     await stopHelper()
