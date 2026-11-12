@@ -2,9 +2,11 @@ import { createServer } from 'vite'
 import { build } from 'esbuild'
 import { spawn, spawnSync } from 'node:child_process'
 import electron from 'electron'
+import { buildIntegrationArtifacts } from './integration-artifacts.mjs'
 
 const native = spawnSync(process.execPath, ['scripts/build-native.mjs'], { stdio: 'inherit' })
 if (native.status !== 0) process.exit(native.status ?? 1)
+await buildIntegrationArtifacts()
 await build({
   entryPoints: ['src/electron/main.ts', 'src/electron/preload.ts'],
   outdir: 'dist/electron', outExtension: { '.js': '.cjs' },
