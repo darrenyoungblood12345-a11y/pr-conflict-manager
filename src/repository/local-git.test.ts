@@ -110,4 +110,29 @@ describe('read-only local Git observation', () => {
     expect(scpSnapshot.origin).toBe('git@github.com:acme/project.git')
     expect(JSON.stringify(scpSnapshot)).not.toContain('second-private-token')
   })
+
+  it.each([
+    'https://private-user:private-token@github.com:badport/acme/project.git',
+    'https://github.com:badport/acme/project.git?access_token=private-token',
+    'ssh://private-user:private-token@[github.com/acme/project.git',
+    'https//private-user:private-token@github.com/acme/project.git',
+    '//private-user:private-token@github.com/acme/project.git',
+    'https//github.com/acme/project.git?access_token=private-token',
+  ])('reports no origin for the unparsable credential-bearing remote %s', async remote => {
+    const { root } = await fixture()
+    await git(root, 'remote', 'add', 'origin', remote)
+    const snapshot = await inspectRepository(root)
+    expect(snapshot.origin).toBeUndefined()
+    expect(JSON.stringify(snapshot)).not.toContain('private-')
+  })
+
+  it('still reports sanitized recognized remotes, and nothing for a bare local path', async () => {
+    const { root } = await fixture()
+    await git(root, 'remote', 'add', 'origin', 'ssh://private-user:private-token@github.com:22/acme/project.git')
+    expect((await inspectRepository(root)).origin).toBe('ssh://github.com:22/acme/project.git')
+    await git(root, 'remote', 'set-url', 'origin', 'file:///srv/git/project.git')
+    expect((await inspectRepository(root)).origin).toBe('file:///srv/git/project.git')
+    await git(root, 'remote', 'set-url', 'origin', '../upstream/project.git')
+    expect((await inspectRepository(root)).origin).toBeUndefined()
+  })
 })
